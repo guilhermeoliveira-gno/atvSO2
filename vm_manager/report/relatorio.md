@@ -1,7 +1,7 @@
-# Relatório Técnico - Contribuições de Guilherme
+# Relatório Técnico
 **Trabalho Prático 2: Simulador de Memória Virtual**  
 **Disciplina:** Sistemas Operacionais II  
-**Integrante Responsável:** Guilherme  
+**Integrantes Responsáveis:** Eduardo, Giovana, Guilherme  
 
 ---
 
@@ -128,3 +128,140 @@ O fluxo de desenvolvimento do projeto seguiu os seguintes passos organizacionais
 > **Definição do problema:** Ler blocos de 256 bytes de posições arbitrárias dentro de um arquivo binário em C.
 > **Restrições de implementação:** Usar `fseek` e `fread`, tratamento de erro integrado.
 > **Prompt:** *"Como posicionar o ponteiro de leitura em um arquivo binário aberto e ler um bloco contíguo de 256 bytes para uma matriz que representa a memória física, tratando possíveis falhas de leitura ou posicionamento?"*
+
+## 2.5. Translation Lookaside Buffer (TLB)
+
+Foi implementado o módulo responsável pelo **Translation Lookaside Buffer (TLB)**, utilizado como uma memória cache para armazenar traduções recentes entre páginas virtuais e quadros físicos. O objetivo do TLB é reduzir a quantidade de consultas realizadas à Tabela de Páginas, melhorando o desempenho da tradução de endereços.
+
+A estrutura foi implementada como um vetor estático de entradas, onde cada posição armazena o número da página, o quadro físico correspondente e um indicador de validade.
+
+```c
+typedef struct {
+    int page;
+    int frame;
+    int valid;
+} tlb_entry_t;
+```
+
+Além disso, foi utilizada uma variável auxiliar (`fifo_next`) para controlar a política de substituição FIFO (First-In, First-Out).
+
+```c
+static int fifo_next = 0;
+```
+
+### Busca no TLB
+
+A função `tlb_lookup` percorre todas as entradas válidas do TLB procurando pela página solicitada.
+
+Caso a página seja encontrada, o quadro físico correspondente é retornado imediatamente. Caso contrário, a função retorna `-1`, indicando um **TLB Miss**.
+
+```c
+int tlb_lookup(int page)
+{
+    for (int i = 0; i < TLB_SIZE; i++) {
+        if (tlb[i].valid && tlb[i].page == page) {
+            return tlb[i].frame;
+        }
+    }
+
+    return -1;
+}
+```
+
+### Inserção utilizando FIFO
+
+A inserção de novas traduções é realizada pela função `tlb_insert`.
+
+A implementação considera três situações:
+
+1. Atualização do quadro físico caso a página já esteja presente no TLB;
+2. Utilização de uma posição livre, caso exista;
+3. Substituição utilizando a política FIFO quando todas as posições estiverem ocupadas.
+
+Quando o TLB está cheio, a entrada indicada por `fifo_next` é substituída e o índice é atualizado de forma circular.
+
+```c
+tlb[fifo_next].page = page;
+tlb[fifo_next].frame = frame;
+tlb[fifo_next].valid = 1;
+
+fifo_next = (fifo_next + 1) % TLB_SIZE;
+```
+
+### Remoção de Entradas
+
+Também foi implementada a função `tlb_remove`, responsável por invalidar uma entrada quando a página correspondente deixa de estar presente na memória física.
+
+A remoção consiste em marcar a entrada como inválida e redefinir seus campos.
+
+```c
+tlb[i].valid = 0;
+tlb[i].page = -1;
+tlb[i].frame = -1;
+```
+
+---
+
+## 2.6. Coleta de Estatísticas
+
+Também foi desenvolvido o módulo responsável pela coleta das estatísticas de execução do simulador.
+
+Foram implementadas funções para contabilizar:
+
+- número total de endereços traduzidos;
+- número de **Page Faults**;
+- número de **TLB Hits**.
+
+Cada contador é atualizado durante a execução do simulador por funções específicas.
+
+```c
+void count_address(void)
+{
+    total_addresses++;
+}
+
+void count_page_fault(void)
+{
+    page_faults++;
+}
+
+void count_tlb_hit(void)
+{
+    tlb_hits++;
+}
+```
+
+Ao final da execução, são calculadas as taxas de **Page Fault** e **TLB Hit**, utilizando como base o número total de endereços traduzidos.
+
+```c
+page_fault_rate = (double) page_faults / total_addresses;
+tlb_hit_rate = (double) tlb_hits / total_addresses;
+```
+
+Essas métricas permitem avaliar o desempenho do simulador e medir a eficiência do TLB durante a tradução de endereços.
+
+---
+
+## 3. Complemento da Metodologia de Uso de IA
+
+Durante o desenvolvimento desta etapa do projeto, a Inteligência Artificial foi utilizada como ferramenta de apoio para auxiliar na implementação do módulo do TLB, na construção das funções responsáveis pelas estatísticas e na revisão da integração dessas funcionalidades ao fluxo principal do simulador.
+
+### Prompt 1 – Implementação do TLB
+
+> **Definição do problema:** Implementar um Translation Lookaside Buffer (TLB) utilizando a política FIFO para substituição de entradas.
+>
+> **Restrições:** Linguagem C, vetor de estruturas e suporte às operações de busca, inserção e remoção.
+>
+> **Prompt:** *"Implemente um TLB em C utilizando um vetor de estruturas. A busca deve retornar o quadro físico correspondente à página ou -1 em caso de falha. A inserção deve atualizar entradas existentes, utilizar posições livres quando disponíveis e aplicar a política FIFO quando o TLB estiver cheio."*
+
+### Prompt 2 – Estatísticas da Simulação
+
+> **Definição do problema:** Implementar funções para contabilizar o número de endereços traduzidos, Page Faults e TLB Hits, além de calcular as respectivas taxas ao final da execução.
+>
+> **Prompt:** *"Implemente funções em C para registrar estatísticas de um simulador de memória virtual, contabilizando acessos, Page Faults, TLB Hits e calculando suas taxas ao final da execução."*
+
+### Prompt 3 – Revisão da Integração
+
+> **Definição do problema:** Verificar se o módulo do TLB e o sistema de estatísticas estão corretamente integrados ao fluxo principal de tradução de endereços.
+>
+> **Prompt:** *"Revise o fluxo principal de um simulador de memória virtual em C e verifique se a utilização do TLB e das estatísticas está consistente com a especificação do projeto."*
