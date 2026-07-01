@@ -303,4 +303,4 @@ O fluxo de desenvolvimento do projeto seguiu os preceitos do Spec-Driven Develop
 
 O código-fonte deste simulador, contendo todas as implementações e mantendo a arquitetura original exigida, pode ser encontrado publicamente no GitHub. Todos os integrantes colaboraram ativamente com pelo menos 1 (um) commit ao longo do ciclo de desenvolvimento.
 
-**Link do Repositório:** [https://github.com/usuario/atvSO2](https://github.com/usuario/atvSO2) *(Atenção: Lembre-se de substituir este link pelo link real do repositório público do seu grupo!)*
+**Link do Repositório:** [https://github.com/guilhermeoliveira-gno/atvSO2](https://github.com/guilhermeoliveira-gno/atvSO2)
