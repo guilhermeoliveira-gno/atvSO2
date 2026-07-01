@@ -265,3 +265,67 @@ Durante o desenvolvimento desta etapa do projeto, a Inteligência Artificial foi
 > **Definição do problema:** Verificar se o módulo do TLB e o sistema de estatísticas estão corretamente integrados ao fluxo principal de tradução de endereços.
 >
 > **Prompt:** *"Revise o fluxo principal de um simulador de memória virtual em C e verifique se a utilização do TLB e das estatísticas está consistente com a especificação do projeto."*
+
+---
+
+## 2.7. Gerenciamento da Memória Física e Tratamento de Page Faults
+
+O gerenciamento da memória física é responsável por alocar os quadros disponíveis para as páginas carregadas do arquivo `BACKING_STORE.bin`. Para isso, utilizamos o mapeamento direto através de um array `frame_to_page`, onde cada índice corresponde a um quadro físico (de `0` a `127`) e armazena o número da página nele contida (ou `-1` se o quadro estiver livre).
+
+Quando ocorre um *Page Fault*, o fluxo do gerenciamento obedece às seguintes etapas na função `handle_page_fault`:
+1. **Busca por quadro livre:** Utilizamos a função auxiliar `find_free_frame` para percorrer `frame_to_page` e encontrar o primeiro quadro disponível.
+2. **Substituição de página (se necessário):** Caso a memória física esteja cheia (`frame == -1`), a função `select_victim_page` é invocada para determinar qual página deverá ser removida, seguindo a política de substituição (LRU Aproximado).
+3. **Invalidação e Atualização:** A página escolhida como vítima tem seus mapeamentos invalidados tanto na Tabela de Páginas (`page_table_invalidate`) quanto na TLB (`tlb_remove`).
+4. **Leitura e Atualização:** Por fim, a nova página é carregada do disco para a memória física no quadro alocado, e o vetor `frame_to_page` bem como a Tabela de Páginas são atualizados para refletir o novo mapeamento.
+
+---
+
+## 2.8. Seleção de Vítima com LRU Aproximado
+
+O algoritmo de envelhecimento (Aging), cujos contadores são atualizados a cada ciclo, é consumido pelo algoritmo de substituição de páginas para simular de maneira eficiente o comportamento do *Least Recently Used* (LRU).
+
+A escolha da página vítima ocorre na função `select_victim_page`:
+* A função itera sobre todos os quadros ocupados da memória física.
+* Para cada página presente, o seu `aging_counter` (contador de envelhecimento de 8 bits) é consultado via Tabela de Páginas.
+* A página que apresentar o **menor valor no contador** (ou seja, aquela cujo histórico de bits de referência nos últimos ciclos representa o valor mais baixo e, portanto, menos acessada recentemente) é eleita como a vítima para dar lugar à nova página.
+
+```c
+int select_victim_page(void)
+{
+    int victim_page = -1;
+    unsigned int min_aging = 256; 
+    
+    for (int i = 0; i < NUM_FRAMES; i++) {
+        int page = frame_to_page[i];
+        if (page != -1) {
+            unsigned char aging = page_table_get_aging_counter(page);
+            if (victim_page == -1 || aging < min_aging) {
+                min_aging = aging;
+                victim_page = page;
+            }
+        }
+    }
+    
+    return victim_page;
+}
+```
+
+---
+
+## 4. Uso de IA na Gestão de Memória (Giovana)
+
+A Inteligência Artificial foi empregada para estruturar a lógica principal das políticas de gerenciamento de memória e tratamento do Page Fault, garantindo o correto encadeamento de eventos na invalidação da TLB e Tabela de Páginas, além da implementação eficiente do seletor da página vítima.
+
+### Prompt 1 – Tratamento de Page Fault
+> **Definição do problema:** Implementar a lógica de tratamento do page fault, integrando as chamadas da tabela de páginas, disco (backing store) e TLB em C.
+>
+> **Restrições:** Atualizar a variável auxiliar do quadro correspondente de maneira assertiva, invalidando os acessos antigos caso haja substituição, de acordo com o SDD.
+>
+> **Prompt:** *"Em linguagem C, como implementar a função `handle_page_fault` considerando que eu preciso buscar um quadro livre. Se a memória estiver cheia, preciso selecionar uma vítima, pegar seu quadro associado e usar funções `page_table_invalidate(victim_page)` e `tlb_remove(victim_page)`. Na sequência, faça a leitura da página com fseek e fread e então atualize os arrays `frame_to_page` e a tabela de páginas."*
+
+### Prompt 2 – Busca da Página Vítima (LRU Aproximado)
+> **Definição do problema:** Implementar a função que decide a página a ser descartada com base no menor valor de `aging_counter`.
+>
+> **Restrições:** Iterar apenas sobre os quadros de 0 a `NUM_FRAMES - 1` preenchidos.
+>
+> **Prompt:** *"Como escrever a função `select_victim_page` em C para percorrer o array `frame_to_page` (de 0 a `NUM_FRAMES - 1`), consultar o contador de envelhecimento (0 a 255) de cada página carregada e retornar o número da página que possui o menor valor (ou seja, a candidata a ser removida da memória pelo algoritmo de LRU aproximado)?"*

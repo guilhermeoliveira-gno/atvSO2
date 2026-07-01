@@ -60,14 +60,13 @@ int handle_page_fault(int page)
         int victim_page = select_victim_page();
 
         /*
-         * TODO:
          * Obter o quadro da página vítima.
          * Invalidar tabela e TLB.
          */
-
-        (void) victim_page;
-
-        frame = 0;
+        frame = page_table_get_frame(victim_page);
+        
+        page_table_invalidate(victim_page);
+        tlb_remove(victim_page);
     }
 
     if (backing == NULL) {
@@ -88,19 +87,30 @@ int handle_page_fault(int page)
         fprintf(stderr, "Erro no fread do BACKING_STORE.\n");
         exit(1);
     }
+    
+    frame_to_page[frame] = page;
+    page_table_update(page, frame);
 
     return frame;
 }
 
 int select_victim_page(void)
 {
-    /*
-     * TODO:
-     * Selecionar a página válida com menor aging_counter.
-     * Em caso de empate, qualquer critério consistente pode ser usado.
-     */
-
-    return 0;
+    int victim_page = -1;
+    unsigned int min_aging = 256; /* Valor maior que o máximo possível com 8 bits (255) */
+    
+    for (int i = 0; i < NUM_FRAMES; i++) {
+        int page = frame_to_page[i];
+        if (page != -1) {
+            unsigned char aging = page_table_get_aging_counter(page);
+            if (victim_page == -1 || aging < min_aging) {
+                min_aging = aging;
+                victim_page = page;
+            }
+        }
+    }
+    
+    return victim_page;
 }
 
 signed char read_memory(int frame, int offset)

@@ -29,3 +29,17 @@
   - [x] Cálculo de `Page Fault Rate`
   - [x] Cálculo de `TLB Hit Rate`
 - [x] Compilação e verificação básica (`make` executado sem erros)
+
+# Lista de Tarefas - Parte da Giovana
+
+- [x] Gerenciamento da memória física (`src/memory.c`)
+  - [x] Mapeamento de quadros via `frame_to_page`
+  - [x] Busca por quadro livre (`find_free_frame`)
+- [x] Algoritmo de substituição aging / LRU aproximado (`src/memory.c`)
+  - [x] Função de seleção de vítima (`select_victim_page`) checando o menor contador
+- [x] Tratamento de page faults integrado com TLB (`src/memory.c`)
+  - [x] Implementação central em `handle_page_fault`
+  - [x] Invalidação na Tabela de Páginas da página vítima
+  - [x] Remoção da TLB da página vítima
+  - [x] Leitura de disco e atualização correta
+- [x] Redação do relatório (Seções de memória, page faults e prompts da IA)
