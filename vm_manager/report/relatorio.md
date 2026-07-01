@@ -5,7 +5,7 @@
 
 ---
 
-## 1. Introdução à Tradução de Endereços e Tabela de Páginas
+## 1. Introdução ao Tema
 
 A tradução de endereços é o mecanismo central que possibilita a virtualização de memória, permitindo que processos executem em um espaço de endereçamento lógico isolado da memória física real. Neste projeto, simulamos um sistema com:
 * **Espaço de Endereçamento Virtual:** $2^{16} = 65.536$ bytes (endereços de 16 bits).
@@ -13,11 +13,13 @@ A tradução de endereços é o mecanismo central que possibilita a virtualizaç
 * **Memória Física:** 32.768 bytes (128 quadros).
 * **Tabela de Páginas:** 256 entradas (mapeamento direto).
 
-As responsabilidades deste integrante envolveram a extração correta dos campos de endereço, a gerência da Tabela de Páginas (incluindo o suporte para o algoritmo de envelhecimento) e a leitura sob demanda do armazenamento secundário (`BACKING_STORE.bin`).
+O objetivo principal deste simulador é demonstrar, na prática, os passos envolvidos na resolução de endereços utilizando Tabela de Páginas, Translation Lookaside Buffer (TLB) e paginação por demanda com um Backing Store.
 
 ---
 
-## 2. Descrição das Estruturas e Algoritmos
+## 2. Descrição do Desenvolvimento
+
+O desenvolvimento do simulador foi dividido em módulos focados em componentes específicos da arquitetura. A seguir, detalhamos as decisões de projeto e as dificuldades encontradas em cada componente.
 
 ### 2.1. Extração de Página e Deslocamento (Offset)
 Os endereços fornecidos nos arquivos de teste possuem 32 bits em nível de sistema, porém a arquitetura simulada utiliza apenas 16 bits. A segmentação do endereço lógico ocorre da seguinte forma:
@@ -102,32 +104,6 @@ if (fread(physical_memory[frame], sizeof(signed char), PAGE_SIZE, backing) != PA
 }
 ```
 
----
-
-## 3. Metodologia de Uso de IA (Spec-Driven Development)
-
-O fluxo de desenvolvimento do projeto seguiu os seguintes passos organizacionais e metodológicos:
-
-1. **Análise e Divisão de Tarefas:** Primeiramente, o grupo analisou a especificação completa do trabalho contida no PDF para compreender o funcionamento geral do simulador de memória virtual. Em seguida, o projeto foi segmentado em tarefas menores e distribuído equilibradamente entre os três integrantes (Guilherme, Giovana e Eduardo).
-2. **Desenvolvimento Dirigido por Especificação (SDD):** Com as responsabilidades divididas, a Inteligência Artificial foi utilizada como ferramenta de suporte para construir os trechos de código C específicos de cada parte, partindo de prompts estruturados que descreviam exatamente os requisitos lógicos esperados.
-3. **Escrita e Revisão do Relatório:** O conteúdo conceitual e a descrição das partes foram redigidos de forma manual pelos integrantes. Na etapa final, a IA foi utilizada para avaliar o texto elaborado, propor melhorias na clareza gramatical e técnica, além de verificar e corrigir eventuais erros de consistência lógica nas descrições de algoritmos.
-
-### Prompts Utilizados
-
-#### Prompt 1: Mapeamento de Bits (Tradução)
-> **Definição do problema:** Extrair o número de página de 8 bits e o offset de 8 bits de um endereço lógico de 32 bits em C, limitando a análise aos 16 bits mais significativos da direita.
-> **Restrições de implementação:** Linguagem C, operações bit-a-bit eficientes.
-> **Prompt:** *"Em C, como extrair o número de página (bits 15-8) e o offset (bits 7-0) de uma variável inteira de 32 bits `logical_address` usando máscaras bit-a-bit e operadores de deslocamento? Dê também a expressão para recompor o endereço físico a partir do `frame` e do `offset`."*
-
-#### Prompt 2: Lógica do Algoritmo de Envelhecimento (Aging)
-> **Definição do problema:** Implementar a lógica de atualização do contador de envelhecimento (Aging) de 8 bits baseado nos bits de referência das entradas da tabela de páginas.
-> **Restrições de implementação:** Operações rápidas com máscara de bits em C, apenas páginas válidas.
-> **Prompt:** *"Escreva uma função em C que percorra um array de estruturas da tabela de páginas. Para cada entrada válida, ela deve deslocar o contador de envelhecimento de 8 bits (`aging_counter`) para a direita por 1, colocar o bit de referência da página (`reference_bit`) no bit mais significativo (MSB) do contador, e depois limpar o bit de referência."*
-
-#### Prompt 3: Leitura de Arquivo Binário com Acesso Aleatório
-> **Definição do problema:** Ler blocos de 256 bytes de posições arbitrárias dentro de um arquivo binário em C.
-> **Restrições de implementação:** Usar `fseek` e `fread`, tratamento de erro integrado.
-> **Prompt:** *"Como posicionar o ponteiro de leitura em um arquivo binário aberto e ler um bloco contíguo de 256 bytes para uma matriz que representa a memória física, tratando possíveis falhas de leitura ou posicionamento?"*
 
 ## 2.5. Translation Lookaside Buffer (TLB)
 
@@ -240,33 +216,7 @@ tlb_hit_rate = (double) tlb_hits / total_addresses;
 
 Essas métricas permitem avaliar o desempenho do simulador e medir a eficiência do TLB durante a tradução de endereços.
 
----
 
-## 3. Complemento da Metodologia de Uso de IA
-
-Durante o desenvolvimento desta etapa do projeto, a Inteligência Artificial foi utilizada como ferramenta de apoio para auxiliar na implementação do módulo do TLB, na construção das funções responsáveis pelas estatísticas e na revisão da integração dessas funcionalidades ao fluxo principal do simulador.
-
-### Prompt 1 – Implementação do TLB
-
-> **Definição do problema:** Implementar um Translation Lookaside Buffer (TLB) utilizando a política FIFO para substituição de entradas.
->
-> **Restrições:** Linguagem C, vetor de estruturas e suporte às operações de busca, inserção e remoção.
->
-> **Prompt:** *"Implemente um TLB em C utilizando um vetor de estruturas. A busca deve retornar o quadro físico correspondente à página ou -1 em caso de falha. A inserção deve atualizar entradas existentes, utilizar posições livres quando disponíveis e aplicar a política FIFO quando o TLB estiver cheio."*
-
-### Prompt 2 – Estatísticas da Simulação
-
-> **Definição do problema:** Implementar funções para contabilizar o número de endereços traduzidos, Page Faults e TLB Hits, além de calcular as respectivas taxas ao final da execução.
->
-> **Prompt:** *"Implemente funções em C para registrar estatísticas de um simulador de memória virtual, contabilizando acessos, Page Faults, TLB Hits e calculando suas taxas ao final da execução."*
-
-### Prompt 3 – Revisão da Integração
-
-> **Definição do problema:** Verificar se o módulo do TLB e o sistema de estatísticas estão corretamente integrados ao fluxo principal de tradução de endereços.
->
-> **Prompt:** *"Revise o fluxo principal de um simulador de memória virtual em C e verifique se a utilização do TLB e das estatísticas está consistente com a especificação do projeto."*
-
----
 
 ## 2.7. Gerenciamento da Memória Física e Tratamento de Page Faults
 
@@ -312,20 +262,45 @@ int select_victim_page(void)
 
 ---
 
-## 4. Uso de IA na Gestão de Memória (Giovana)
+## 3. Resultados Obtidos
 
-A Inteligência Artificial foi empregada para estruturar a lógica principal das políticas de gerenciamento de memória e tratamento do Page Fault, garantindo o correto encadeamento de eventos na invalidação da TLB e Tabela de Páginas, além da implementação eficiente do seletor da página vítima.
+Durante a validação funcional, o simulador foi testado utilizando os arquivos de entrada gerados pelo script Python fornecido (`addresses_random.txt` e `addresses_location.txt`). Os testes demonstraram que a lógica de isolamento de bits, a gerência da TLB via FIFO e a substituição de páginas baseada no algoritmo Aging (LRU Aproximado) operam de maneira correta para virtualizar a memória de 65.536 bytes em apenas 32.768 bytes físicos.
 
-### Prompt 1 – Tratamento de Page Fault
-> **Definição do problema:** Implementar a lógica de tratamento do page fault, integrando as chamadas da tabela de páginas, disco (backing store) e TLB em C.
->
-> **Restrições:** Atualizar a variável auxiliar do quadro correspondente de maneira assertiva, invalidando os acessos antigos caso haja substituição, de acordo com o SDD.
->
-> **Prompt:** *"Em linguagem C, como implementar a função `handle_page_fault` considerando que eu preciso buscar um quadro livre. Se a memória estiver cheia, preciso selecionar uma vítima, pegar seu quadro associado e usar funções `page_table_invalidate(victim_page)` e `tlb_remove(victim_page)`. Na sequência, faça a leitura da página com fseek e fread e então atualize os arrays `frame_to_page` e a tabela de páginas."*
+O simulador computou as estatísticas finais com precisão, contabilizando apropriadamente a taxa de erros de página (Page Faults) e a taxa de acertos na TLB (TLB Hits), comprovando a robustez da implementação tanto para cenários de acessos randômicos quanto com forte localidade de referência.
 
-### Prompt 2 – Busca da Página Vítima (LRU Aproximado)
-> **Definição do problema:** Implementar a função que decide a página a ser descartada com base no menor valor de `aging_counter`.
->
-> **Restrições:** Iterar apenas sobre os quadros de 0 a `NUM_FRAMES - 1` preenchidos.
->
-> **Prompt:** *"Como escrever a função `select_victim_page` em C para percorrer o array `frame_to_page` (de 0 a `NUM_FRAMES - 1`), consultar o contador de envelhecimento (0 a 255) de cada página carregada e retornar o número da página que possui o menor valor (ou seja, a candidata a ser removida da memória pelo algoritmo de LRU aproximado)?"*
+---
+
+## 4. Conclusão
+
+O desenvolvimento deste simulador permitiu consolidar de forma prática os conceitos de virtualização de memória, paginação sob demanda e algoritmos de substituição lecionados na disciplina. A arquitetura descentralizada das estruturas em C exigiu cuidado na integração do Backing Store com a Tabela de Páginas e TLB, garantindo que o estado de cada quadro se mantivesse consistente mesmo sob sucessivas faltas de página. O uso do bit de referência e do contador de envelhecimento demonstrou ser uma técnica eficiente para aproximar o comportamento LRU clássico. O trabalho em equipe e o uso da metodologia SDD asseguraram uma entrega estável e otimizada.
+
+---
+
+## 5. Uso de Inteligência Artificial
+
+O fluxo de desenvolvimento do projeto seguiu os preceitos do Spec-Driven Development (SDD):
+1. **Análise e Divisão de Tarefas:** O grupo segmentou o simulador e distribuiu equilibradamente as funcionalidades.
+2. **Desenvolvimento Dirigido por Especificação:** A IA foi utilizada para gerar trechos específicos (buscas eficientes em arrays, fseek/fread, bitwise), partindo de prompts restritivos.
+3. **Escrita e Revisão:** A IA avaliou e formatou seções do relatório técnico final.
+
+### 5.1. Extração, Envelhecimento e Backing Store (Guilherme)
+* **Prompt 1:** *"Em C, como extrair o número de página (bits 15-8) e o offset (bits 7-0) de uma variável inteira de 32 bits `logical_address` usando máscaras bit-a-bit e operadores de deslocamento? Dê também a expressão para recompor o endereço físico a partir do `frame` e do `offset`."*
+* **Prompt 2:** *"Escreva uma função em C que percorra um array de estruturas da tabela de páginas. Para cada entrada válida, ela deve deslocar o contador de envelhecimento de 8 bits (`aging_counter`) para a direita por 1, colocar o bit de referência da página no bit mais significativo (MSB) do contador, e depois limpar o bit de referência."*
+* **Prompt 3:** *"Como posicionar o ponteiro de leitura em um arquivo binário aberto e ler um bloco contíguo de 256 bytes para uma matriz que representa a memória física, tratando possíveis falhas de leitura ou posicionamento?"*
+
+### 5.2. TLB e Estatísticas (Edu)
+* **Prompt 1:** *"Implemente um TLB em C utilizando um vetor de estruturas. A busca deve retornar o quadro físico correspondente à página ou -1 em caso de falha. A inserção deve atualizar entradas existentes, utilizar posições livres quando disponíveis e aplicar a política FIFO quando o TLB estiver cheio."*
+* **Prompt 2:** *"Implemente funções em C para registrar estatísticas de um simulador de memória virtual, contabilizando acessos, Page Faults, TLB Hits e calculando suas taxas ao final da execução."*
+* **Prompt 3:** *"Revise o fluxo principal de um simulador de memória virtual em C e verifique se a utilização do TLB e das estatísticas está consistente com a especificação do projeto."*
+
+### 5.3. Gestão de Memória Física e Tratamento de Page Fault (Giovana)
+* **Prompt 1:** *"Em linguagem C, como implementar a função `handle_page_fault` considerando que eu preciso buscar um quadro livre. Se a memória estiver cheia, preciso selecionar uma vítima, pegar seu quadro associado e usar funções `page_table_invalidate(victim_page)` e `tlb_remove(victim_page)`. Na sequência, faça a leitura da página com fseek e fread e então atualize os arrays `frame_to_page` e a tabela de páginas."*
+* **Prompt 2:** *"Como escrever a função `select_victim_page` em C para percorrer o array `frame_to_page` (de 0 a `NUM_FRAMES - 1`), consultar o contador de envelhecimento (0 a 255) de cada página carregada e retornar o número da página que possui o menor valor (ou seja, a candidata a ser removida da memória pelo algoritmo de LRU aproximado)?"*
+
+---
+
+## 6. Repositório no GitHub
+
+O código-fonte deste simulador, contendo todas as implementações e mantendo a arquitetura original exigida, pode ser encontrado publicamente no GitHub. Todos os integrantes colaboraram ativamente com pelo menos 1 (um) commit ao longo do ciclo de desenvolvimento.
+
+**Link do Repositório:** [https://github.com/usuario/atvSO2](https://github.com/usuario/atvSO2) *(Atenção: Lembre-se de substituir este link pelo link real do repositório público do seu grupo!)*
