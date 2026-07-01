@@ -1,3 +1,4 @@
 # atvSO2
-[Uploading Relatório Técnicooficial.pdf…]()
+[Relatório Técnicooficial.pdf](https://github.com/user-attachments/files/29529195/Relatorio.Tecnicooficial.pdf)
+
 
